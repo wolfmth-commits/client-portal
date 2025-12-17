@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Client Portal — Iris Consulting</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<script>
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function toICSDate(dt){
+    // dt format: YYYY-MM-DDTHH:MM (local)
+    const d = new Date(dt);
+    return d.getFullYear()
+      + pad(d.getMonth()+1)
+      + pad(d.getDate())
+      + "T"
+      + pad(d.getHours())
+      + pad(d.getMinutes())
+      + "00";
+  }
+
+  function escapeICS(text=""){
+    return String(text)
+      .replace(/\\/g, "\\\\")
+      .replace(/\n/g, "\\n")
+      .replace(/,/g, "\\,")
+      .replace(/;/g, "\\;");
+  }
+
+  function downloadICS({ title, start, end, location, description }){
+    const uid = crypto?.randomUUID ? crypto.randomUUID() : String(Date.now());
+    const dtstamp = toICSDate(new Date().toISOString().slice(0,16));
+    const dtstart = toICSDate(start);
+    const dtend = toICSDate(end);
+
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Iris Consulting Group//Client Portal//EN",
+      "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT",
+      "UID:" + uid,
+      "DTSTAMP:" + dtstamp,
+      "DTSTART:" + dtstart,
+      "DTEND:" + dtend,
+      "SUMMARY:" + escapeICS(title),
+      "LOCATION:" + escapeICS(location || ""),
+      "DESCRIPTION:" + escapeICS(description || ""),
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = (title || "event") + ".ics";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function notesKey(id){ return "icg_notes_" + id; }
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if(!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const row = btn.closest(".row");
+    if(!row) return;
+
+    const id = row.getAttribute("data-id") || "no-id";
+    const noteWrap = row.querySelector(".noteWrap");
+    const textarea = row.querySelector(".note");
+
+    if(action === "notes"){
+      if(!noteWrap) return;
+      const willShow = noteWrap.hasAttribute("hidden");
+      if(willShow){
+        noteWrap.removeAttribute("hidden");
+        if(textarea){
+          textarea.value = localStorage.getItem(notesKey(id)) || "";
+          textarea.focus();
+        }
+      } else {
+        noteWrap.setAttribute("hidden", "");
+      }
+    }
+
+    if(action === "clear-notes"){
+      if(textarea){
+        textarea.value = "";
+        localStorage.removeItem(notesKey(id));
+      }
+    }
+
+    if(action === "ics"){
+      const title = row.getAttribute("data-title") || "Client Portal Event";
+      const start = row.getAttribute("data-start");
+      const end = row.getAttribute("data-end");
+      const location = row.getAttribute("data-location") || "";
+      const description = row.querySelector(".desc")?.innerText?.trim() || "";
+
+      if(!start || !end){
+        alert("Missing start/end time on this entry. Add data-start and data-end to the row.");
+        return;
+      }
+
+      downloadICS({ title, start, end, location, description });
+    }
+  });
+
+  document.addEventListener("input", (e) => {
+    const textarea = e.target.closest("textarea.note");
+    if(!textarea) return;
+    const row = textarea.closest(".row");
+    if(!row) return;
+    const id = row.getAttribute("data-id") || "no-id";
+    localStorage.setItem(notesKey(id), textarea.value);
+  });
+</script>
+
+<body>
+  <div class="bg"></div>
+
+  <main class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="brandMark"></div>
+        <div>
+          <div class="kicker">Iris Consulting Group</div>
+          <div class="title">Client Operations Portal</div>
+        </div>
+      </div>
+
+      <div class="clientCard">
+        <div class="clientRow">
+          <div>
+            <div class="clientName">Jonathan Joanis</div>
+            <div class="clientSub">Brand & Career Operations</div>
+          </div>
+          <div class="statusPills">
+            <span class="pill pill-green">On Track</span>
+            <span class="pill pill-blue">Active</span>
+          </div>
+        </div>
+
+        <div class="meta">
+          <div><span class="metaLabel">Current Phase</span>Visibility & Market Authority</div>
+          <div><span class="metaLabel">Last Updated</span>Dec 16, 2025 — 3:42 PM</div>
+        </div>
+      </div>
+    </header>
+
+    <section class="grid">
+      <!-- Strategic Focus -->
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Strategic Focus</h2>
+          <span class="muted">North Star</span>
+        </div>
+        <p class="lead">
+          Build a consistent digital presence that compounds trust, visibility, and revenue opportunities —
+          independent of contracts, teams, or short-term cycles.
+        </p>
+        <div class="chips">
+          <span class="chip">Cadence</span>
+          <span class="chip">Authority</span>
+          <span class="chip">Compounding Visibility</span>
+          <span class="chip">Monetization Readiness</span>
+        </div>
+      </section>
+
+      <!-- Operations Log -->
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Operations Log</h2>
+          <span class="muted">Live updates</span>
+        </div>
+
+        <div class="list">
+          <div class="row"
+  data-id="oplog-20251216-1312"
+  data-title="Miami Shoot — Crew Confirmed"
+  data-start="2025-12-18T10:00"
+  data-end="2025-12-18T12:00"
+  data-location="Miami, FL"
+>
+  <div class="time">Dec 16 • 1:12 PM</div>
+
+  <div class="desc">
+    Crew confirmed for Miami shoot. Licensing review initiated for multi-platform usage.
+
+    <div class="actions">
+      <button class="btn btn-ghost" data-action="notes">Client Notes</button>
+      <button class="btn btn-solid" data-action="ics">Add to Calendar</button>
+    </div>
+
+    <div class="noteWrap" hidden>
+      <textarea class="note" placeholder="Your notes (saved on this device)..."></textarea>
+      <div class="noteMeta">
+        <span class="muted">Autosaves locally.</span>
+        <button class="btn btn-ghost btn-small" data-action="clear-notes">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tag pill pill-blue">In Motion</div>
+</div>
+
+
+          <div class="row">
+            <div class="time">Dec 14 • 10:03 AM</div>
+            <div class="desc">30-day content cadence drafted. Editorial calendar staged for review.</div>
+            <div class="tag pill pill-green">Progress</div>
+          </div>
+
+          <div class="row">
+            <div class="time">Dec 12 • 4:40 PM</div>
+            <div class="desc">Brand positioning notes refined. Bio + visual direction aligned for consistency across platforms.</div>
+            <div class="tag pill pill-amber">Review</div>
+          </div>
+        </div>
+
+        <div class="hint">
+          Add new log entries by duplicating a <span class="mono">.row</span> block.
+        </div>
+      </section>
+
+      <!-- Execution Timeline -->
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Execution Timeline</h2>
+          <span class="muted">Sequence over urgency</span>
+        </div>
+
+        <div class="table">
+          <div class="tHead">
+            <div>Window</div><div>Initiative</div><div>Owner</div><div>Status</div>
+          </div>
+
+          <div class="tRow">
+            <div class="mono">Week of Dec 18</div>
+            <div>Photo & Video Capture</div>
+            <div>Iris</div>
+            <div><span class="pill pill-blue">In Progress</span></div>
+          </div>
+
+          <div class="tRow">
+            <div class="mono">Late Dec</div>
+            <div>Website Build (v1)</div>
+            <div>Iris</div>
+            <div><span class="pill pill-amber">Planned</span></div>
+          </div>
+
+          <div class="tRow">
+            <div class="mono">Early Jan</div>
+            <div>Partnership Outreach (shortlist)</div>
+            <div>Iris</div>
+            <div><span class="pill pill-amber">Planned</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Investment Breakdown -->
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Investment Breakdown</h2>
+          <span class="muted">Clear, itemized</span>
+        </div>
+
+        <div class="table">
+          <div class="tHead">
+            <div>Category</div><div>Description</div><div>Amount</div><div>Status</div>
+          </div>
+
+          <div class="tRow">
+            <div>Camera Crew</div>
+            <div class="muted">Capture package (shoot day)</div>
+            <div class="mono">$2,400</div>
+            <div><span class="pill pill-green">Paid</span></div>
+          </div>
+
+          <div class="tRow">
+            <div>Licensing</div>
+            <div class="muted">Multi-platform usage rights</div>
+            <div class="mono">$750</div>
+            <div><span class="pill pill-amber">Pending</span></div>
+          </div>
+
+          <div class="tRow">
+            <div>Consulting</div>
+            <div class="muted">Strategy + execution (monthly)</div>
+            <div class="mono">$3,000</div>
+            <div><span class="pill pill-green">Paid</span></div>
+          </div>
+        </div>
+
+        <div class="hint">
+          Keep statuses unemotional: <span class="mono">Paid</span>, <span class="mono">Pending</span>, <span class="mono">Forecasted</span>.
+        </div>
+      </section>
+
+      <!-- Trajectory Indicators -->
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Trajectory Indicators</h2>
+          <span class="muted">Cause → effect</span>
+        </div>
+
+        <div class="metrics">
+          <div class="metric">
+            <div class="metricTop">
+              <div class="metricLabel">Followers (30d)</div>
+              <div class="metricDelta pill pill-green">+1,240</div>
+            </div>
+            <div class="metricValue mono">28,610</div>
+          </div>
+
+          <div class="metric">
+            <div class="metricTop">
+              <div class="metricLabel">Engagement Rate</div>
+              <div class="metricDelta pill pill-blue">+0.6%</div>
+            </div>
+            <div class="metricValue mono">4.1%</div>
+          </div>
+
+          <div class="metric">
+            <div class="metricTop">
+              <div class="metricLabel">Inbound Inquiries</div>
+              <div class="metricDelta pill pill-amber">This week</div>
+            </div>
+            <div class="metricValue mono">7</div>
+          </div>
+        </div>
+
+        <div class="hint">
+          We keep metrics lightweight in v1. No charts until the system is stable.
+        </div>
+      </section>
+
+      <!-- Active Assets -->
+      <section class="panel">
+        <div class="panelHead">
+          <h2>Active Assets</h2>
+          <span class="muted">One-click access</span>
+        </div>
+
+        <div class="assets">
+          <a class="asset" href="#" target="_blank" rel="noreferrer">
+            <div class="assetIcon"></div>
+            <div>
+              <div class="assetTitle">Website</div>
+              <div class="assetSub muted">Landing page + bio hub</div>
+            </div>
+            <div class="assetGo">↗</div>
+          </a>
+
+          <a class="asset" href="#" target="_blank" rel="noreferrer">
+            <div class="assetIcon"></div>
+            <div>
+              <div class="assetTitle">Instagram</div>
+              <div class="assetSub muted">Primary growth channel</div>
+            </div>
+            <div class="assetGo">↗</div>
+          </a>
+
+          <a class="asset" href="#" target="_blank" rel="noreferrer">
+            <div class="assetIcon"></div>
+            <div>
+              <div class="assetTitle">Media Folder</div>
+              <div class="assetSub muted">Deliverables + raw assets</div>
+            </div>
+            <div class="assetGo">↗</div>
+          </a>
+        </div>
+      </section>
+    </section>
+
+    <footer class="foot">
+      <div class="muted">This portal is maintained by Iris Consulting Group. Updates reflect live execution and upcoming milestones.</div>
+    </footer>
+  </main>
+</body>
+</html>
